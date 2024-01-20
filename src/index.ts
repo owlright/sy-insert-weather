@@ -13,6 +13,10 @@ import {
     fetchPost,
     Protyle, openWindow, IOperation
 } from "siyuan";
+
+import axios from 'axios';
+import * as cheerio from 'cheerio';
+
 import "./index.scss";
 
 const STORAGE_NAME = "menu-config";
@@ -26,6 +30,28 @@ export default class PluginSample extends Plugin {
     private blockIconEventBindThis = this.blockIconEvent.bind(this);
 
     onload() {
+        this.loadData("weather.html").then((htmldata) => {
+            if (htmldata != "") {
+                this.data["weather.html"] = htmldata;
+                const $ = cheerio.load(this.data["weather.html"]);
+                const provinces: Map<string, string> = new Map();
+                $("#cityPosition > div:nth-child(4) > ul").children('li').map((i, el) => {
+                    provinces.set($(el).data("value").toString(), $(el).text());
+                    // console.log($(el).data("value"));
+                    // console.log($(el).text());
+                });
+                this.data["provinces"] = provinces;
+            } else {
+                console.log("get data from weather.cma.cn");
+                try {
+                    axios.get('https://weather.cma.cn/web/weather/54511.html').then((response) => {
+                        this.saveData("weather.html", response.data);
+                    })
+                } catch (error) {
+                    console.error(error);
+                }
+            }
+        });
 
         this.data[STORAGE_NAME] = { readonlyText: "Readonly" };
 
@@ -154,17 +180,24 @@ export default class PluginSample extends Plugin {
                 return textareaElement;
             },
         });
-        const btnaElement = document.createElement("button");
-        btnaElement.className = "b3-button b3-button--outline fn__flex-center fn__size200";
-        btnaElement.textContent = "Open";
-        btnaElement.addEventListener("click", () => {
-            window.open("https://github.com/siyuan-note/plugin-sample");
-        });
+        
+        let selectElement: HTMLSelectElement = document.createElement('select');
+        selectElement.className = "b3-select fn__flex-center fn__size200";
+
         this.setting.addItem({
-            title: "Open plugin url",
-            description: "Open plugin url in browser",
-            actionElement: btnaElement,
-        });
+            title: "位置",
+            createActionElement: () => {
+                for (const [key, value] of this.data["provinces"] ?? new Map()) {
+                    let optionElement = document.createElement('option');
+                    // optionElement.textContent = val;
+                    optionElement.value = key;
+                    optionElement.text = value;
+                    selectElement.appendChild(optionElement);
+                }
+
+                return selectElement;
+            },
+        })
 
         this.protyleSlash = [{
             filter: ["insert emoji 😊", "插入表情 😊", "crbqwx"],
