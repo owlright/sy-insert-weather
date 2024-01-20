@@ -180,7 +180,9 @@ export default class PluginSample extends Plugin {
                 return textareaElement;
             },
         });
-        
+        let div = document.createElement("div");
+        div.style.flex = "flex";
+        div.style.flexDirection = "row";
         let selectElement: HTMLSelectElement = document.createElement('select');
         selectElement.className = "b3-select fn__flex-center fn__size200";
 
