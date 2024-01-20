@@ -26,7 +26,8 @@ export default class PluginSample extends Plugin {
     private blockIconEventBindThis = this.blockIconEvent.bind(this);
 
     onload() {
-        this.data[STORAGE_NAME] = {readonlyText: "Readonly"};
+
+        this.data[STORAGE_NAME] = { readonlyText: "Readonly" };
 
         const frontEnd = getFrontend();
         this.isMobile = frontEnd === "mobile" || frontEnd === "browser-mobile";
@@ -68,7 +69,7 @@ export default class PluginSample extends Plugin {
         statusIconTemp.content.firstElementChild.addEventListener("click", () => {
             confirm("⚠️", this.i18n.confirmRemove.replace("${name}", this.name), () => {
                 this.removeData(STORAGE_NAME).then(() => {
-                    this.data[STORAGE_NAME] = {readonlyText: "Readonly"};
+                    this.data[STORAGE_NAME] = { readonlyText: "Readonly" };
                     showMessage(`[${this.name}]: ${this.i18n.removedData}`);
                 });
             });
@@ -94,7 +95,7 @@ export default class PluginSample extends Plugin {
         this.addCommand({
             langKey: "showDialog",
             hotkey: "⇧⌘O",
-            callback: () => {
+            callback: async () => {
                 this.showDialog();
             },
         });
@@ -110,7 +111,7 @@ export default class PluginSample extends Plugin {
         this.addDock({
             config: {
                 position: "LeftBottom",
-                size: {width: 200, height: 0},
+                size: { width: 200, height: 0 },
                 icon: "iconSaving",
                 title: "Custom Dock",
             },
@@ -141,7 +142,7 @@ export default class PluginSample extends Plugin {
         const textareaElement = document.createElement("textarea");
         this.setting = new Setting({
             confirmCallback: () => {
-                this.saveData(STORAGE_NAME, {readonlyText: textareaElement.value});
+                this.saveData(STORAGE_NAME, { readonlyText: textareaElement.value });
             }
         });
         this.setting.addItem({
@@ -223,11 +224,11 @@ export default class PluginSample extends Plugin {
         })
     }
 
-    private eventBusLog({detail}: any) {
+    private eventBusLog({ detail }: any) {
         console.log(detail);
     }
 
-    private blockIconEvent({detail}: any) {
+    private blockIconEvent({ detail }: any) {
         const ids: string[] = [];
         detail.menu.addItem({
             iconHTML: "",
@@ -250,7 +251,7 @@ export default class PluginSample extends Plugin {
         });
     }
 
-    private showDialog() {
+    private async showDialog() {
         const dialog = new Dialog({
             title: "Info",
             content: `<div class="b3-dialog__content">
@@ -374,7 +375,7 @@ export default class PluginSample extends Plugin {
                 label: "Open Doc Window(open help first)",
                 click: () => {
                     openWindow({
-                        doc: {id: "20200812220555-lj3enxa"}
+                        doc: { id: "20200812220555-lj3enxa" }
                     });
                 }
             });
