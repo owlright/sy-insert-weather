@@ -44,7 +44,7 @@ export default class PluginSample extends Plugin {
                         if (ret["msg"] !== "success") {
                             throw Error("获取省份信息失败");
                         }
-                        const provinces:string[] = ret["data"].split('|');
+                        const provinces: string[] = ret["data"].split('|');
                         this.saveData(CACHED_PROVINCES, provinces);
                     })
                 } catch (error) {
@@ -186,7 +186,7 @@ export default class PluginSample extends Plugin {
         locationDiv.setAttribute("id", "weather-location");
         locationDiv.style.flex = "flex";
         locationDiv.style.flexDirection = "row";
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < 2; i++) {
             let selectElement: HTMLSelectElement = document.createElement('select');
             selectElement.className = "b3-select fn__flex-center fn__size200";
             locationDiv.appendChild(selectElement);
@@ -195,7 +195,28 @@ export default class PluginSample extends Plugin {
         locationDiv.children[1].setAttribute("id", "weather-city-select");
         locationDiv.addEventListener('change', function (event: Event) {
             let selectedOpt = (event.target as HTMLSelectElement).value;
-            console.log(selectedOpt)
+            console.log(selectedOpt);
+            try {
+                axios.get(WEATHER_SITE_API + "dict/province/" + selectedOpt, { responseType: 'json' }).then((response) => {
+                    const ret = response.data;
+                    if (ret["msg"] !== "success") {
+                        throw Error("获取城市信息失败");
+                    }
+                    // console.log("citys: " + ret["data"]);
+                    let cities: string[] = ret["data"].split('|');
+                    let optionList = locationDiv.children[1];
+                    optionList.innerHTML = "";
+                    for (let i = 0; i < cities.length; i++) {
+                        let optionElement = document.createElement('option');
+                        let s = cities[i].split(',');
+                        optionElement.value = s[0];
+                        optionElement.text = s[1];
+                        optionList.appendChild(optionElement);
+                    }
+                })
+            } catch (error) {
+                console.error(error);
+            }
         });
         this.setting.addItem({
             title: "位置",
