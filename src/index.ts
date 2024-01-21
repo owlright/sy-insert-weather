@@ -22,6 +22,9 @@ import "./index.scss";
 const STORAGE_NAME = "menu-config";
 const TAB_TYPE = "custom_tab";
 const DOCK_TYPE = "dock_tab";
+const WEATHER_SITE_API = "https://weather.cma.cn/api/";
+const CACHED_PROVINCES = "provinces";
+const CACHED_CITYS = "cities";
 
 export default class PluginSample extends Plugin {
 
@@ -30,27 +33,25 @@ export default class PluginSample extends Plugin {
     private blockIconEventBindThis = this.blockIconEvent.bind(this);
 
     onload() {
-        this.loadData("weather.html").then((htmldata) => {
-            if (htmldata != "") {
-                this.data["weather.html"] = htmldata;
-                const $ = cheerio.load(this.data["weather.html"]);
-                const provinces: Map<string, string> = new Map();
-                $("#cityPosition > div:nth-child(4) > ul").children('li').map((i, el) => {
-                    provinces.set($(el).data("value").toString(), $(el).text());
-                    // console.log($(el).data("value"));
-                    // console.log($(el).text());
-                });
-                this.data["provinces"] = provinces;
-            } else {
-                console.log("get data from weather.cma.cn");
+        this.loadData(CACHED_PROVINCES);
+        this.loadData(CACHED_CITYS);
+        this.loadData(CACHED_PROVINCES).then((provinceData) => {
+            if (provinceData == "") {
+                console.log("Ask weather.cma.cn for province names");
                 try {
-                    axios.get('https://weather.cma.cn/web/weather/54511.html').then((response) => {
-                        this.saveData("weather.html", response.data);
+                    axios.get(WEATHER_SITE_API + "dict/province", { responseType: 'json' }).then((response) => {
+                        const ret = response.data;
+                        if (ret["msg"] !== "success") {
+                            throw Error("获取省份信息失败");
+                        }
+                        const provinces:string[] = ret["data"].split('|');
+                        this.saveData(CACHED_PROVINCES, provinces);
                     })
                 } catch (error) {
                     console.error(error);
                 }
             }
+            this.data[CACHED_PROVINCES] = provinceData;
         });
 
         this.data[STORAGE_NAME] = { readonlyText: "Readonly" };
@@ -180,24 +181,34 @@ export default class PluginSample extends Plugin {
                 return textareaElement;
             },
         });
-        let div = document.createElement("div");
-        div.style.flex = "flex";
-        div.style.flexDirection = "row";
-        let selectElement: HTMLSelectElement = document.createElement('select');
-        selectElement.className = "b3-select fn__flex-center fn__size200";
 
+        let locationDiv = document.createElement("div");
+        locationDiv.setAttribute("id", "weather-location");
+        locationDiv.style.flex = "flex";
+        locationDiv.style.flexDirection = "row";
+        for (let i = 0; i < 3; i++) {
+            let selectElement: HTMLSelectElement = document.createElement('select');
+            selectElement.className = "b3-select fn__flex-center fn__size200";
+            locationDiv.appendChild(selectElement);
+        }
+        locationDiv.children[0].setAttribute("id", "weather-province-select");
+        locationDiv.children[1].setAttribute("id", "weather-city-select");
+        locationDiv.addEventListener('change', function (event: Event) {
+            let selectedOpt = (event.target as HTMLSelectElement).value;
+            console.log(selectedOpt)
+        });
         this.setting.addItem({
             title: "位置",
             createActionElement: () => {
-                for (const [key, value] of this.data["provinces"] ?? new Map()) {
+                for (let i = 0; i < this.data["provinces"].length; i++) {
                     let optionElement = document.createElement('option');
                     // optionElement.textContent = val;
-                    optionElement.value = key;
-                    optionElement.text = value;
-                    selectElement.appendChild(optionElement);
+                    let s = this.data["provinces"][i].split(',');
+                    optionElement.value = s[0];
+                    optionElement.text = s[1];
+                    locationDiv.children[0].appendChild(optionElement);
                 }
-
-                return selectElement;
+                return locationDiv;
             },
         })
 
