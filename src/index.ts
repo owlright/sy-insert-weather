@@ -11,7 +11,7 @@ import {
     IModel,
     Setting,
     fetchPost,
-    Protyle, openWindow, IOperation
+    Protyle, openWindow, IOperation, IEventBusMap
 } from "siyuan";
 
 import axios from 'axios';
@@ -683,13 +683,13 @@ export default class PluginSample extends Plugin {
                 icon: "iconSelect",
                 label: "On paste",
                 click: () => {
-                    this.eventBus.on("paste", this.eventBusPaste);
+                    this.eventBus.on("paste" as keyof IEventBusMap, this.eventBusPaste);
                 }
             }, {
                 icon: "iconClose",
                 label: "Off paste",
                 click: () => {
-                    this.eventBus.off("paste", this.eventBusPaste);
+                    this.eventBus.off("paste" as keyof IEventBusMap, this.eventBusPaste);
                 }
             }, {
                 icon: "iconSelect",
