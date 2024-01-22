@@ -26,7 +26,7 @@ const WEATHER_SITE_API = "https://weather.cma.cn/api/";
 const CACHED_PROVINCES = "provinces";
 const CACHED_CITYS = "cities";
 
-export default class PluginSample extends Plugin {
+export default class InsertWeatherPlugin extends Plugin {
 
     private customTab: () => IModel;
     private isMobile: boolean;
