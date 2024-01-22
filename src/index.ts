@@ -193,7 +193,7 @@ export default class InsertWeatherPlugin extends Plugin {
         }
         locationDiv.children[0].setAttribute("id", "weather-province-select");
         locationDiv.children[1].setAttribute("id", "weather-city-select");
-        locationDiv.addEventListener('change', function (event: Event) {
+        locationDiv.children[0].addEventListener('change', function (event: Event) {
             let selectedOpt = (event.target as HTMLSelectElement).value;
             console.log(selectedOpt);
             try {
