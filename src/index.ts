@@ -25,6 +25,8 @@ const DOCK_TYPE = "dock_tab";
 const WEATHER_SITE_API = "https://weather.cma.cn/api/";
 const CACHED_PROVINCES = "provinces";
 const CACHED_CITYS = "cities";
+const STORAGE_PROVINCE = "current_province";
+const STORAGE_CITY = "current_city";
 
 export default class InsertWeatherPlugin extends Plugin {
 
@@ -32,6 +34,27 @@ export default class InsertWeatherPlugin extends Plugin {
     private isMobile: boolean;
     private blockIconEventBindThis = this.blockIconEvent.bind(this);
 
+    parseWeatherHtml(weatherHtml: string): string {
+        const weekDayIndex = 0;
+        const weatherIndex = 2;
+        const temperatureIndex = 5;
+        const $ = cheerio.load(weatherHtml);
+        const dayList = $('div#dayList').children('.pull-left.day');
+        let storeStr = [];
+        for (let i = 0; i < dayList.length; i++) {
+            const dayItems = $(dayList[i]).children('div');
+            const weekDay = $(dayItems[weekDayIndex]).text().trim().replace(/\s/g, '');
+            const weather = $(dayItems[weatherIndex]).text().trim();
+            const temperature = $(dayItems[temperatureIndex]);
+            const zhDay = weekDay.substring(0, 3);
+            const date = weekDay.substring(3);
+            const highTemperature = $('.high', temperature).text().trim();
+            const lowTemperature = $('.low', temperature).text().trim();
+            console.log(`${zhDay}, ${date}, ${weather}, ${highTemperature}, ${lowTemperature}`);
+            storeStr.push(`${zhDay}, ${date}, ${weather}, ${highTemperature}, ${lowTemperature}`);
+        }
+        return storeStr.join('\n');
+    }
     onload() {
         this.loadData(CACHED_PROVINCES);
         this.loadData(CACHED_CITYS);
@@ -193,8 +216,9 @@ export default class InsertWeatherPlugin extends Plugin {
         }
         locationDiv.children[0].setAttribute("id", "weather-province-select");
         locationDiv.children[1].setAttribute("id", "weather-city-select");
-        locationDiv.children[0].addEventListener('change', function (event: Event) {
+        function handleProvinceSelect(event: Event) {
             let selectedOpt = (event.target as HTMLSelectElement).value;
+            this.saveData(STORAGE_PROVINCE, selectedOpt);
             console.log(selectedOpt);
             try {
                 axios.get(WEATHER_SITE_API + "dict/province/" + selectedOpt, { responseType: 'json' }).then((response) => {
@@ -213,11 +237,22 @@ export default class InsertWeatherPlugin extends Plugin {
                         optionElement.text = s[1];
                         optionList.appendChild(optionElement);
                     }
+                    optionList.dispatchEvent(new Event('change'));
                 })
             } catch (error) {
                 console.error(error);
             }
+        }
+        function handleCitySelect(event: Event) {
+            let selectedOpt = (event.target as HTMLSelectElement).value;
+            console.log(selectedOpt);
+            this.saveData(STORAGE_CITY, selectedOpt);
+        }
+        ["change"].forEach((event) => {
+            locationDiv.querySelector("#weather-province-select").addEventListener(event, handleProvinceSelect.bind(this));
+            locationDiv.querySelector("#weather-city-select").addEventListener(event, handleCitySelect.bind(this));
         });
+
         this.setting.addItem({
             title: "位置",
             createActionElement: () => {
@@ -229,6 +264,7 @@ export default class InsertWeatherPlugin extends Plugin {
                     optionElement.text = s[1];
                     locationDiv.children[0].appendChild(optionElement);
                 }
+                locationDiv.children[0].dispatchEvent(new Event("change"));
                 return locationDiv;
             },
         })
@@ -334,12 +370,21 @@ export default class InsertWeatherPlugin extends Plugin {
             width: this.isMobile ? "92vw" : "560px",
             height: "540px",
         });
-        new Protyle(this.app, dialog.element.querySelector("#protyle"), {
-            blockId: "20200812220555-lj3enxa",
-        });
-        fetchPost("/api/system/currentTime", {}, (response) => {
-            dialog.element.querySelector("#time").innerHTML = new Date(response.data).toString();
-        });
+        // new Protyle(this.app, dialog.element.querySelector("#protyle"), {
+        //     blockId: "20200812220555-lj3enxa",
+        // });
+
+        if (this.data[STORAGE_CITY] != "") {
+            axios.get('https://weather.cma.cn/web/weather/' + this.data[STORAGE_CITY] + '.html').then((response) => {
+                const weatherHtml = response.data.toString();
+                let content = this.parseWeatherHtml(weatherHtml);
+                dialog.element.querySelector("#time").innerHTML = content;
+            });
+        }
+
+        // fetchPost("/api/system/currentTime", {}, (response) => {
+        //     dialog.element.querySelector("#time").innerHTML = new Date(response.data).toString() + this.data[STORAGE_PROVINCE];
+        // });
     }
 
     private addMenu(rect?: DOMRect) {
