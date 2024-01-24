@@ -16,23 +16,35 @@ import {
 
 import axios from 'axios';
 import * as cheerio from 'cheerio';
-
+const isDevelopment = process.env.NODE_ENV === "development";
 import "./index.scss";
 
-const STORAGE_NAME = "menu-config";
-const TAB_TYPE = "custom_tab";
-const DOCK_TYPE = "dock_tab";
+
+interface WeatherCachedCity {
+    [key: string]: {province:string, cities:string[]};
+}
+type readonlyWeatherCachedCity = Readonly<WeatherCachedCity>;
+
 const WEATHER_SITE_API = "https://weather.cma.cn/api/";
-const CACHED_PROVINCES = "provinces";
 const CACHED_CITYS = "cities";
-const STORAGE_PROVINCE = "current_province";
-const STORAGE_CITY = "current_city";
+const STORAGE_SETTINGS = "weather_settings";
+
+const dbg = (message:any) => {
+    if (isDevelopment) {
+        console.log(message);
+    }
+}
+
+const assert = (condition:boolean|object, message:string) => {
+    if (!condition) {
+        throw new Error(message);
+    }
+}
 
 export default class InsertWeatherPlugin extends Plugin {
 
-    private customTab: () => IModel;
     private isMobile: boolean;
-    private blockIconEventBindThis = this.blockIconEvent.bind(this);
+
 
     parseWeatherHtml(weatherHtml: string): string {
         const weekDayIndex = 0;
@@ -55,39 +67,15 @@ export default class InsertWeatherPlugin extends Plugin {
         }
         return storeStr.join('\n');
     }
-    onload() {
-        this.loadData(CACHED_PROVINCES);
-        this.loadData(CACHED_CITYS);
-        this.loadData(CACHED_PROVINCES).then((provinceData) => {
-            if (provinceData == "") {
-                console.log("Ask weather.cma.cn for province names");
-                try {
-                    axios.get(WEATHER_SITE_API + "dict/province", { responseType: 'json' }).then((response) => {
-                        const ret = response.data;
-                        if (ret["msg"] !== "success") {
-                            throw Error("获取省份信息失败");
-                        }
-                        const provinces: string[] = ret["data"].split('|');
-                        this.saveData(CACHED_PROVINCES, provinces);
-                    })
-                } catch (error) {
-                    console.error(error);
-                }
-            }
-            this.data[CACHED_PROVINCES] = provinceData;
-        });
 
-        this.data[STORAGE_NAME] = { readonlyText: "Readonly" };
+    onload() {
+        this.data[CACHED_CITYS] = null as WeatherCachedCity;
 
         const frontEnd = getFrontend();
         this.isMobile = frontEnd === "mobile" || frontEnd === "browser-mobile";
         // 图标的制作参见帮助文档
         this.addIcons(`<symbol id="iconWeather" viewBox="0 0 1024 1024">
-        <path d="M548.769933 204.8c152.439467 0 277.8112 113.698133 292.590934 259.310933C927.0014 487.082667 989.875 563.950933 989.875 655.1552 989.875 764.6208 899.3534 853.333333 787.703267 853.333333H273.075c-131.959467 0-238.933333-104.8576-238.933333-234.1888 0-127.488 103.936-231.185067 233.301333-234.154666h8.635733C319.667 279.313067 425.309667 204.8 548.769933 204.8z m0 57.207467c-96.938667 0-182.852267 57.856-218.589866 144.418133l-14.677334 35.566933-39.1168 0.2048h-7.611733C170.913933 444.484267 92.509667 522.990933 92.509667 619.178667c0 97.723733 80.861867 176.9472 180.565333 176.9472h514.628267c79.394133 0 143.803733-63.0784 143.803733-140.936534 0-63.829333-43.7248-119.227733-105.5744-135.850666l-38.673067-10.410667-3.959466-39.1168c-11.946667-117.418667-113.186133-207.7696-234.530134-207.7696z m21.435734 114.449066a19.456 19.456 0 0 1 19.626666 19.2512v343.005867a19.456 19.456 0 0 1-19.626666 19.2512h-19.114667a19.456 19.456 0 0 1-19.626667-19.2512V395.707733a19.456 19.456 0 0 1 19.626667-19.2512h19.114667zM434.013667 529.066667a19.456 19.456 0 0 1 19.626666 19.2512v190.395733a19.456 19.456 0 0 1-19.6608 19.2512h-19.114666a19.456 19.456 0 0 1-19.626667-19.2512v-190.395733a19.456 19.456 0 0 1 19.626667-19.2512h19.114666z m-116.804267 57.2416a19.456 19.456 0 0 1 19.6608 19.217066v133.188267a19.456 19.456 0 0 1-19.6608 19.2512h-19.114667a19.456 19.456 0 0 1-19.626666-19.2512V605.525333a19.456 19.456 0 0 1 19.6608-19.217066h19.114666z m389.2224-114.449067a19.456 19.456 0 0 1 19.626667 19.217067v247.637333a19.456 19.456 0 0 1-19.626667 19.2512h-19.114667a19.456 19.456 0 0 1-19.626666-19.2512V491.076267a19.456 19.456 0 0 1 19.626666-19.217067h19.114667z"></path>
-</symbol>
-<symbol id="iconSaving" viewBox="0 0 32 32">
-<path d="M20 13.333c0-0.733 0.6-1.333 1.333-1.333s1.333 0.6 1.333 1.333c0 0.733-0.6 1.333-1.333 1.333s-1.333-0.6-1.333-1.333zM10.667 12h6.667v-2.667h-6.667v2.667zM29.333 10v9.293l-3.76 1.253-2.24 7.453h-7.333v-2.667h-2.667v2.667h-7.333c0 0-3.333-11.28-3.333-15.333s3.28-7.333 7.333-7.333h6.667c1.213-1.613 3.147-2.667 5.333-2.667 1.107 0 2 0.893 2 2 0 0.28-0.053 0.533-0.16 0.773-0.187 0.453-0.347 0.973-0.427 1.533l3.027 3.027h2.893zM26.667 12.667h-1.333l-4.667-4.667c0-0.867 0.12-1.72 0.347-2.547-1.293 0.333-2.347 1.293-2.787 2.547h-8.227c-2.573 0-4.667 2.093-4.667 4.667 0 2.507 1.627 8.867 2.68 12.667h2.653v-2.667h8v2.667h2.68l2.067-6.867 3.253-1.093v-4.707z"></path>
-</symbol>`);
+        <path d="M548.769933 204.8c152.439467 0 277.8112 113.698133 292.590934 259.310933C927.0014 487.082667 989.875 563.950933 989.875 655.1552 989.875 764.6208 899.3534 853.333333 787.703267 853.333333H273.075c-131.959467 0-238.933333-104.8576-238.933333-234.1888 0-127.488 103.936-231.185067 233.301333-234.154666h8.635733C319.667 279.313067 425.309667 204.8 548.769933 204.8z m0 57.207467c-96.938667 0-182.852267 57.856-218.589866 144.418133l-14.677334 35.566933-39.1168 0.2048h-7.611733C170.913933 444.484267 92.509667 522.990933 92.509667 619.178667c0 97.723733 80.861867 176.9472 180.565333 176.9472h514.628267c79.394133 0 143.803733-63.0784 143.803733-140.936534 0-63.829333-43.7248-119.227733-105.5744-135.850666l-38.673067-10.410667-3.959466-39.1168c-11.946667-117.418667-113.186133-207.7696-234.530134-207.7696z m21.435734 114.449066a19.456 19.456 0 0 1 19.626666 19.2512v343.005867a19.456 19.456 0 0 1-19.626666 19.2512h-19.114667a19.456 19.456 0 0 1-19.626667-19.2512V395.707733a19.456 19.456 0 0 1 19.626667-19.2512h19.114667zM434.013667 529.066667a19.456 19.456 0 0 1 19.626666 19.2512v190.395733a19.456 19.456 0 0 1-19.6608 19.2512h-19.114666a19.456 19.456 0 0 1-19.626667-19.2512v-190.395733a19.456 19.456 0 0 1 19.626667-19.2512h19.114666z m-116.804267 57.2416a19.456 19.456 0 0 1 19.6608 19.217066v133.188267a19.456 19.456 0 0 1-19.6608 19.2512h-19.114667a19.456 19.456 0 0 1-19.626666-19.2512V605.525333a19.456 19.456 0 0 1 19.6608-19.217066h19.114666z m389.2224-114.449067a19.456 19.456 0 0 1 19.626667 19.217067v247.637333a19.456 19.456 0 0 1-19.626667 19.2512h-19.114667a19.456 19.456 0 0 1-19.626666-19.2512V491.076267a19.456 19.456 0 0 1 19.626666-19.217067h19.114667z"></path></symbol>`);
 
         const topBarElement = this.addTopBar({
             icon: "iconWeather",
@@ -110,115 +98,19 @@ export default class InsertWeatherPlugin extends Plugin {
             }
         });
 
-        const statusIconTemp = document.createElement("template");
-        statusIconTemp.innerHTML = `<div class="toolbar__item ariaLabel" aria-label="Remove plugin-sample Data">
-    <svg>
-        <use xlink:href="#iconTrashcan"></use>
-    </svg>
-</div>`;
-        statusIconTemp.content.firstElementChild.addEventListener("click", () => {
-            confirm("⚠️", this.i18n.confirmRemove.replace("${name}", this.name), () => {
-                this.removeData(STORAGE_NAME).then(() => {
-                    this.data[STORAGE_NAME] = { readonlyText: "Readonly" };
-                    showMessage(`[${this.name}]: ${this.i18n.removedData}`);
-                });
-            });
-        });
+        // this.addCommand({
+        //     langKey: "showDialog",
+        //     hotkey: "⇧⌘O",
+        //     callback: async () => {
+        //         this.showDialog();
+        //     },
+        // });
 
-        this.addStatusBar({
-            element: statusIconTemp.content.firstElementChild as HTMLElement,
-        });
 
-        this.customTab = this.addTab({
-            type: TAB_TYPE,
-            init() {
-                this.element.innerHTML = `<div class="plugin-sample__custom-tab">${this.data.text}</div>`;
-            },
-            beforeDestroy() {
-                console.log("before destroy tab:", TAB_TYPE);
-            },
-            destroy() {
-                console.log("destroy tab:", TAB_TYPE);
-            }
-        });
 
-        this.addCommand({
-            langKey: "showDialog",
-            hotkey: "⇧⌘O",
-            callback: async () => {
-                this.showDialog();
-            },
-        });
-
-        this.addCommand({
-            langKey: "getTab",
-            hotkey: "⇧⌘M",
-            globalCallback: () => {
-                console.log(this.getOpenedTab());
-            },
-        });
-
-        this.addDock({
-            config: {
-                position: "LeftBottom",
-                size: { width: 200, height: 0 },
-                icon: "iconSaving",
-                title: "Custom Dock",
-            },
-            data: {
-                text: "This is my custom dock"
-            },
-            type: DOCK_TYPE,
-            init() {
-                this.element.innerHTML = `<div class="fn__flex-1 fn__flex-column">
-    <div class="block__icons">
-        <div class="block__logo">
-            <svg><use xlink:href="#iconEmoji"></use></svg>
-            Custom Dock
-        </div>
-        <span class="fn__flex-1 fn__space"></span>
-        <span data-type="min" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Min ${adaptHotkey("⌘W")}"><svg><use xlink:href="#iconMin"></use></svg></span>
-    </div>
-    <div class="fn__flex-1 plugin-sample__custom-dock">
-        ${this.data.text}
-    </div>
-</div>`;
-            },
-            destroy() {
-                console.log("destroy dock:", DOCK_TYPE);
-            }
-        });
-
-        const textareaElement = document.createElement("textarea");
-        this.setting = new Setting({
-            confirmCallback: () => {
-                this.saveData(STORAGE_NAME, { readonlyText: textareaElement.value });
-            }
-        });
-        this.setting.addItem({
-            title: "Readonly text",
-            createActionElement: () => {
-                textareaElement.className = "b3-text-field fn__block";
-                textareaElement.placeholder = "Readonly text in the menu";
-                textareaElement.value = this.data[STORAGE_NAME].readonlyText;
-                return textareaElement;
-            },
-        });
-
-        let locationDiv = document.createElement("div");
-        locationDiv.setAttribute("id", "weather-location");
-        locationDiv.style.flex = "flex";
-        locationDiv.style.flexDirection = "row";
-        for (let i = 0; i < 2; i++) {
-            let selectElement: HTMLSelectElement = document.createElement('select');
-            selectElement.className = "b3-select fn__flex-center fn__size200";
-            locationDiv.appendChild(selectElement);
-        }
-        locationDiv.children[0].setAttribute("id", "weather-province-select");
-        locationDiv.children[1].setAttribute("id", "weather-city-select");
         function handleProvinceSelect(event: Event) {
             let selectedOpt = (event.target as HTMLSelectElement).value;
-            this.saveData(STORAGE_PROVINCE, selectedOpt);
+            this.saveData(STORAGE_SETTINGS, {province: selectedOpt});
             console.log(selectedOpt);
             try {
                 axios.get(WEATHER_SITE_API + "dict/province/" + selectedOpt, { responseType: 'json' }).then((response) => {
@@ -228,16 +120,15 @@ export default class InsertWeatherPlugin extends Plugin {
                     }
                     // console.log("citys: " + ret["data"]);
                     let cities: string[] = ret["data"].split('|');
-                    let optionList = locationDiv.children[1];
-                    optionList.innerHTML = "";
+                    selectCityElement.innerHTML = ""; // clear recent information
                     for (let i = 0; i < cities.length; i++) {
                         let optionElement = document.createElement('option');
                         let s = cities[i].split(',');
                         optionElement.value = s[0];
                         optionElement.text = s[1];
-                        optionList.appendChild(optionElement);
+                        selectCityElement.appendChild(optionElement);
                     }
-                    optionList.dispatchEvent(new Event('change'));
+                    selectCityElement.dispatchEvent(new Event('change')); // call selectElement's change event
                 })
             } catch (error) {
                 console.error(error);
@@ -246,136 +137,109 @@ export default class InsertWeatherPlugin extends Plugin {
         function handleCitySelect(event: Event) {
             let selectedOpt = (event.target as HTMLSelectElement).value;
             console.log(selectedOpt);
-            this.saveData(STORAGE_CITY, selectedOpt);
+            this.saveData(STORAGE_SETTINGS, {city: selectedOpt});
         }
-        ["change"].forEach((event) => {
-            locationDiv.querySelector("#weather-province-select").addEventListener(event, handleProvinceSelect.bind(this));
-            locationDiv.querySelector("#weather-city-select").addEventListener(event, handleCitySelect.bind(this));
+
+        const selectProvinceElement: HTMLSelectElement = document.createElement('select');
+        selectProvinceElement.className = "b3-select fn__flex-center fn__size200";
+        selectProvinceElement.setAttribute("id", "weather-province-select");
+
+        const selectCityElement: HTMLSelectElement = document.createElement('select');
+        selectCityElement.className = "b3-select fn__flex-center fn__size200";
+        selectCityElement.setAttribute("id", "weather-city-select");
+
+        ["change"].forEach((event) => { // TODO: 似乎不会有更多事件需要监听
+            selectProvinceElement.addEventListener(event, handleProvinceSelect.bind(this));
+            selectCityElement.addEventListener(event, handleCitySelect.bind(this));
+        });
+
+        this.setting = new Setting({
+            confirmCallback: () => {
+                this.saveData(STORAGE_SETTINGS, {province: selectProvinceElement.value});
+                this.saveData(STORAGE_SETTINGS, {city: selectCityElement.value});
+            }
         });
 
         this.setting.addItem({
             title: "位置",
             createActionElement: () => {
-                for (let i = 0; i < this.data["provinces"].length; i++) {
-                    let optionElement = document.createElement('option');
-                    // optionElement.textContent = val;
-                    let s = this.data["provinces"][i].split(',');
-                    optionElement.value = s[0];
-                    optionElement.text = s[1];
-                    locationDiv.children[0].appendChild(optionElement);
-                }
-                locationDiv.children[0].dispatchEvent(new Event("change"));
+                let locationDiv = document.createElement("div");
+                locationDiv.setAttribute("id", "weather-location");
+                locationDiv.style.flex = "flex";
+                locationDiv.style.flexDirection = "row";
+                locationDiv.appendChild(selectProvinceElement);
+                locationDiv.appendChild(selectCityElement);
                 return locationDiv;
             },
-        })
+        });
 
-        this.protyleSlash = [{
-            filter: ["insert emoji 😊", "插入表情 😊", "crbqwx"],
-            html: `<div class="b3-list-item__first"><span class="b3-list-item__text">${this.i18n.insertEmoji}</span><span class="b3-list-item__meta">😊</span></div>`,
-            id: "insertEmoji",
-            callback(protyle: Protyle) {
-                protyle.insert("😊");
+        const setProvinceElements = (cities: readonlyWeatherCachedCity) => {
+            dbg(cities);
+            for (const [key, value] of Object.entries(cities)) {
+                let optionElement = document.createElement('option');
+                optionElement.value = key;
+                optionElement.text = value.province;
+                selectProvinceElement.appendChild(optionElement);
             }
-        }];
+            selectProvinceElement.dispatchEvent(new Event("change"));
+        }
+        // 获取所有省份名字，保存到缓存中，城市名字先为空，等到用户选择了省份之后再获取，到时同样保存到缓存中
+        this.loadData(CACHED_CITYS).then(async (cityData : WeatherCachedCity) =>  {
+            let cities = cityData;
+            // 如果没有缓存，发起请求获取省份信息
+            if (!cities) {
+                dbg("Ask weather.cma.cn for province names");
+                try {
+                    await axios.get(WEATHER_SITE_API + "dict/province", { responseType: 'json' }).then((response) => {
+                        const ret = response.data;
+                        if (ret["msg"] !== "success") {
+                            throw Error("获取省份信息失败");
+                        }
+                        const provinces: string[] = ret["data"].split('|');
+                        const provinceMap_: WeatherCachedCity = {};
+                        for (let i = 0; i < provinces.length; i++) {
+                            const province_ = provinces[i].split(',');
+                            provinceMap_[province_[0]] = {province: province_[1], cities: [] as string[]};
+                        }
+                        this.saveData(CACHED_CITYS, provinceMap_);
+                        setProvinceElements(provinceMap_);
+                    })
+                } catch (error) {
+                    console.error(error);
+                }
+            } else {
+                // 缓存存在直接使用
+                setProvinceElements(cityData)
+            }
 
-        console.log(this.i18n.helloPlugin);
+        });
     }
 
     onLayoutReady() {
-        this.loadData(STORAGE_NAME);
         console.log(`frontend: ${getFrontend()}; backend: ${getBackend()}`);
     }
 
     onunload() {
+        if (isDevelopment) { // 方便调试
+            // ? 省市不会经常变动吧，不需要清除缓存
+            this.removeData(CACHED_CITYS);
+        }
+
         console.log(this.i18n.byePlugin);
-    }
-
-    /* 自定义设置
-    openSetting() {
-        const dialog = new Dialog({
-            title: this.name,
-            content: `<div class="b3-dialog__content"><textarea class="b3-text-field fn__block" placeholder="readonly text in the menu"></textarea></div>
-<div class="b3-dialog__action">
-    <button class="b3-button b3-button--cancel">${this.i18n.cancel}</button><div class="fn__space"></div>
-    <button class="b3-button b3-button--text">${this.i18n.save}</button>
-</div>`,
-            width: this.isMobile ? "92vw" : "520px",
-        });
-        const inputElement = dialog.element.querySelector("textarea");
-        inputElement.value = this.data[STORAGE_NAME].readonlyText;
-        const btnsElement = dialog.element.querySelectorAll(".b3-button");
-        dialog.bindInput(inputElement, () => {
-            (btnsElement[1] as HTMLButtonElement).click();
-        });
-        inputElement.focus();
-        btnsElement[0].addEventListener("click", () => {
-            dialog.destroy();
-        });
-        btnsElement[1].addEventListener("click", () => {
-            this.saveData(STORAGE_NAME, {readonlyText: inputElement.value});
-            dialog.destroy();
-        });
-    }
-    */
-
-    private eventBusPaste(event: any) {
-        // 如果需异步处理请调用 preventDefault， 否则会进行默认处理
-        event.preventDefault();
-        // 如果使用了 preventDefault，必须调用 resolve，否则程序会卡死
-        event.detail.resolve({
-            textPlain: event.detail.textPlain.trim(),
-        })
-    }
-
-    private eventBusLog({ detail }: any) {
-        console.log(detail);
-    }
-
-    private blockIconEvent({ detail }: any) {
-        const ids: string[] = [];
-        detail.menu.addItem({
-            iconHTML: "",
-            label: this.i18n.removeSpace,
-            click: () => {
-                const doOperations: IOperation[] = []
-                detail.blockElements.forEach((item: HTMLElement) => {
-                    const editElement = item.querySelector('[contenteditable="true"]');
-                    if (editElement) {
-                        editElement.textContent = editElement.textContent.replace(/ /g, "");
-                        doOperations.push({
-                            id: item.dataset.nodeId,
-                            data: item.outerHTML,
-                            action: "update"
-                        });
-                    }
-                });
-                detail.protyle.getInstance().transaction(doOperations);
-            }
-        });
     }
 
     private async showDialog() {
         const dialog = new Dialog({
             title: "Info",
             content: `<div class="b3-dialog__content">
-    <div>API demo:</div>
-    <div class="fn__hr"></div>
-    <div class="plugin-sample__time">System current time: <span id="time"></span></div>
-    <div class="fn__hr"></div>
-    <div class="fn__hr"></div>
-    <div>Protyle demo:</div>
-    <div class="fn__hr"></div>
-    <div id="protyle" style="height: 360px;"></div>
-</div>`,
+            <div class="plugin-sample__time">Weather: <span id="time"></span></div>
+            </div>`,
             width: this.isMobile ? "92vw" : "560px",
             height: "540px",
         });
-        // new Protyle(this.app, dialog.element.querySelector("#protyle"), {
-        //     blockId: "20200812220555-lj3enxa",
-        // });
 
-        if (this.data[STORAGE_CITY] != "") {
-            axios.get('https://weather.cma.cn/web/weather/' + this.data[STORAGE_CITY] + '.html').then((response) => {
+        if (this.data[STORAGE_SETTINGS]) {
+            axios.get('https://weather.cma.cn/web/weather/' + this.data[STORAGE_SETTINGS].city + '.html').then((response) => {
                 const weatherHtml = response.data.toString();
                 let content = this.parseWeatherHtml(weatherHtml);
                 dialog.element.querySelector("#time").innerHTML = content;
@@ -388,385 +252,16 @@ export default class InsertWeatherPlugin extends Plugin {
     }
 
     private addMenu(rect?: DOMRect) {
-        const menu = new Menu("topBarSample", () => {
+        const menu = new Menu("weatherTopBar", () => {
             console.log(this.i18n.byeMenu);
         });
         menu.addItem({
             icon: "iconInfo",
-            label: "Dialog(open help first)",
-            accelerator: this.commands[0].customHotkey,
+            label: "",
+            accelerator: "",
             click: () => {
                 this.showDialog();
             }
-        });
-        if (!this.isMobile) {
-            menu.addItem({
-                icon: "iconWeather",
-                label: "Open Custom Tab",
-                click: () => {
-                    const tab = openTab({
-                        app: this.app,
-                        custom: {
-                            icon: "iconWeather",
-                            title: "Custom Tab",
-                            data: {
-                                text: "This is my custom tab",
-                            },
-                            id: this.name + TAB_TYPE
-                        },
-                    });
-                    console.log(tab);
-                }
-            });
-            menu.addItem({
-                icon: "iconImage",
-                label: "Open Asset Tab(open help first)",
-                click: () => {
-                    const tab = openTab({
-                        app: this.app,
-                        asset: {
-                            path: "assets/paragraph-20210512165953-ag1nib4.svg"
-                        }
-                    });
-                    console.log(tab);
-                }
-            });
-            menu.addItem({
-                icon: "iconFile",
-                label: "Open Doc Tab(open help first)",
-                click: async () => {
-                    const tab = await openTab({
-                        app: this.app,
-                        doc: {
-                            id: "20200812220555-lj3enxa",
-                        }
-                    });
-                    console.log(tab);
-                }
-            });
-            menu.addItem({
-                icon: "iconSearch",
-                label: "Open Search Tab",
-                click: () => {
-                    const tab = openTab({
-                        app: this.app,
-                        search: {
-                            k: "SiYuan"
-                        }
-                    });
-                    console.log(tab);
-                }
-            });
-            menu.addItem({
-                icon: "iconRiffCard",
-                label: "Open Card Tab",
-                click: () => {
-                    const tab = openTab({
-                        app: this.app,
-                        card: {
-                            type: "all"
-                        }
-                    });
-                    console.log(tab);
-                }
-            });
-            menu.addItem({
-                icon: "iconLayout",
-                label: "Open Float Layer(open help first)",
-                click: () => {
-                    this.addFloatLayer({
-                        ids: ["20210428212840-8rqwn5o", "20201225220955-l154bn4"],
-                        defIds: ["20230415111858-vgohvf3", "20200813131152-0wk5akh"],
-                        x: window.innerWidth - 768 - 120,
-                        y: 32
-                    });
-                }
-            });
-            menu.addItem({
-                icon: "iconOpenWindow",
-                label: "Open Doc Window(open help first)",
-                click: () => {
-                    openWindow({
-                        doc: { id: "20200812220555-lj3enxa" }
-                    });
-                }
-            });
-        }
-        menu.addItem({
-            icon: "iconScrollHoriz",
-            label: "Event Bus",
-            type: "submenu",
-            submenu: [{
-                icon: "iconSelect",
-                label: "On ws-main",
-                click: () => {
-                    this.eventBus.on("ws-main", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off ws-main",
-                click: () => {
-                    this.eventBus.off("ws-main", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On click-blockicon",
-                click: () => {
-                    this.eventBus.on("click-blockicon", this.blockIconEventBindThis);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off click-blockicon",
-                click: () => {
-                    this.eventBus.off("click-blockicon", this.blockIconEventBindThis);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On click-pdf",
-                click: () => {
-                    this.eventBus.on("click-pdf", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off click-pdf",
-                click: () => {
-                    this.eventBus.off("click-pdf", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On click-editorcontent",
-                click: () => {
-                    this.eventBus.on("click-editorcontent", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off click-editorcontent",
-                click: () => {
-                    this.eventBus.off("click-editorcontent", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On click-editortitleicon",
-                click: () => {
-                    this.eventBus.on("click-editortitleicon", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off click-editortitleicon",
-                click: () => {
-                    this.eventBus.off("click-editortitleicon", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On open-noneditableblock",
-                click: () => {
-                    this.eventBus.on("open-noneditableblock", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off open-noneditableblock",
-                click: () => {
-                    this.eventBus.off("open-noneditableblock", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On loaded-protyle",
-                click: () => {
-                    this.eventBus.on("loaded-protyle", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off loaded-protyle",
-                click: () => {
-                    this.eventBus.off("loaded-protyle", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On loaded-protyle-dynamic",
-                click: () => {
-                    this.eventBus.on("loaded-protyle-dynamic", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off loaded-protyle-dynamic",
-                click: () => {
-                    this.eventBus.off("loaded-protyle-dynamic", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On destroy-protyle",
-                click: () => {
-                    this.eventBus.on("destroy-protyle", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off destroy-protyle",
-                click: () => {
-                    this.eventBus.off("destroy-protyle", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On open-menu-doctree",
-                click: () => {
-                    this.eventBus.on("open-menu-doctree", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off open-menu-doctree",
-                click: () => {
-                    this.eventBus.off("open-menu-doctree", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On open-menu-blockref",
-                click: () => {
-                    this.eventBus.on("open-menu-blockref", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off open-menu-blockref",
-                click: () => {
-                    this.eventBus.off("open-menu-blockref", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On open-menu-fileannotationref",
-                click: () => {
-                    this.eventBus.on("open-menu-fileannotationref", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off open-menu-fileannotationref",
-                click: () => {
-                    this.eventBus.off("open-menu-fileannotationref", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On open-menu-tag",
-                click: () => {
-                    this.eventBus.on("open-menu-tag", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off open-menu-tag",
-                click: () => {
-                    this.eventBus.off("open-menu-tag", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On open-menu-link",
-                click: () => {
-                    this.eventBus.on("open-menu-link", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off open-menu-link",
-                click: () => {
-                    this.eventBus.off("open-menu-link", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On open-menu-image",
-                click: () => {
-                    this.eventBus.on("open-menu-image", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off open-menu-image",
-                click: () => {
-                    this.eventBus.off("open-menu-image", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On open-menu-av",
-                click: () => {
-                    this.eventBus.on("open-menu-av", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off open-menu-av",
-                click: () => {
-                    this.eventBus.off("open-menu-av", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On open-menu-content",
-                click: () => {
-                    this.eventBus.on("open-menu-content", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off open-menu-content",
-                click: () => {
-                    this.eventBus.off("open-menu-content", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On open-menu-breadcrumbmore",
-                click: () => {
-                    this.eventBus.on("open-menu-breadcrumbmore", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off open-menu-breadcrumbmore",
-                click: () => {
-                    this.eventBus.off("open-menu-breadcrumbmore", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On input-search",
-                click: () => {
-                    this.eventBus.on("input-search", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off input-search",
-                click: () => {
-                    this.eventBus.off("input-search", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On paste",
-                click: () => {
-                    this.eventBus.on("paste" as keyof IEventBusMap, this.eventBusPaste);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off paste",
-                click: () => {
-                    this.eventBus.off("paste" as keyof IEventBusMap, this.eventBusPaste);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On open-siyuan-url-plugin",
-                click: () => {
-                    this.eventBus.on("open-siyuan-url-plugin", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off open-siyuan-url-plugin",
-                click: () => {
-                    this.eventBus.off("open-siyuan-url-plugin", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On open-siyuan-url-block",
-                click: () => {
-                    this.eventBus.on("open-siyuan-url-block", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off open-siyuan-url-block",
-                click: () => {
-                    this.eventBus.off("open-siyuan-url-block", this.eventBusLog);
-                }
-            }]
-        });
-        menu.addSeparator();
-        menu.addItem({
-            icon: "iconSparkles",
-            label: this.data[STORAGE_NAME].readonlyText || "Readonly",
-            type: "readonly",
         });
         if (this.isMobile) {
             menu.fullscreen();
