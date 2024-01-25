@@ -13,39 +13,17 @@ import {
     fetchPost,
     Protyle, openWindow, IOperation, IEventBusMap
 } from "siyuan";
-
 import axios from "axios";
 import * as cheerio from "cheerio";
-const isDevelopment = process.env.NODE_ENV === "development";
+
 import "./index.scss";
-
-
-interface WeatherCachedCity {
-    [key: string]: { province: string, cities: string[] };
-}
-type readonlyWeatherCachedCity = Readonly<WeatherCachedCity>;
-
-const WEATHER_SITE_API = "https://weather.cma.cn/api/";
-const CACHED_CITYS = "cities";
-const STORAGE_SETTINGS = "weather_settings";
-const DOCK_TYPE = "dock_tab";
-
-const dbg = (message: any) => {
-    if (isDevelopment) {
-        console.log(message);
-    }
-};
-
-const assert = (condition: boolean | object, message: string) => {
-    if (!condition) {
-        throw new Error(message);
-    }
-};
+import {WEATHER_SITE_API, CACHED_CITYS, STORAGE_SETTINGS, DOCK_TYPE, assert, dbg, isDevelopment, WeatherCachedCity, readonlyWeatherCachedCity} from "./types";
+import WeatherSetting from "./WeatherSetting";
+import {add} from "cheerio/lib/api/traversing";
 
 export default class InsertWeatherPlugin extends Plugin {
 
     private isMobile: boolean;
-
 
     parseWeatherHtml(weatherHtml: string): string {
         const weekDayIndex = 0;
@@ -117,7 +95,7 @@ export default class InsertWeatherPlugin extends Plugin {
             update() {
                 console.log(DOCK_TYPE + " update");
             },
-            init: (dock: IDockModel) => {
+            init: (dock) => {
                 if (this.isMobile) {
                     dock.element.innerHTML = `
                         <div class="toolbar toolbar--border toolbar--dark">
@@ -149,121 +127,10 @@ export default class InsertWeatherPlugin extends Plugin {
                 console.log("destroy dock:", DOCK_TYPE);
             },
         });
-        // this.addCommand({
-        //     langKey: "showDialog",
-        //     hotkey: "⇧⌘O",
-        //     callback: async () => {
-        //         this.showDialog();
-        //     },
-        // });
+        const setting = new WeatherSetting(this, {});
+        this.setting = setting;
+        setting.setUpElements();
 
-
-
-        function handleProvinceSelect(event: Event) {
-            const selectedOpt = (event.target as HTMLSelectElement).value;
-            this.saveData(STORAGE_SETTINGS, { province: selectedOpt });
-            console.log(selectedOpt);
-            try {
-                axios.get(WEATHER_SITE_API + "dict/province/" + selectedOpt, { responseType: "json" }).then((response) => {
-                    const ret = response.data;
-                    if (ret["msg"] !== "success") {
-                        throw Error("获取城市信息失败");
-                    }
-                    // console.log("citys: " + ret["data"]);
-                    const cities: string[] = ret["data"].split("|");
-                    selectCityElement.innerHTML = ""; // clear recent information
-                    for (let i = 0; i < cities.length; i++) {
-                        const optionElement = document.createElement("option");
-                        const s = cities[i].split(",");
-                        optionElement.value = s[0];
-                        optionElement.text = s[1];
-                        selectCityElement.appendChild(optionElement);
-                    }
-                    selectCityElement.dispatchEvent(new Event("change")); // call selectElement's change event
-                });
-            } catch (error) {
-                console.error(error);
-            }
-        }
-        function handleCitySelect(event: Event) {
-            const selectedOpt = (event.target as HTMLSelectElement).value;
-            console.log(selectedOpt);
-            this.saveData(STORAGE_SETTINGS, { city: selectedOpt });
-        }
-
-        const selectProvinceElement: HTMLSelectElement = document.createElement("select");
-        selectProvinceElement.className = "b3-select fn__flex-center fn__size200";
-        selectProvinceElement.setAttribute("id", "weather-province-select");
-
-        const selectCityElement: HTMLSelectElement = document.createElement("select");
-        selectCityElement.className = "b3-select fn__flex-center fn__size200";
-        selectCityElement.setAttribute("id", "weather-city-select");
-
-        ["change"].forEach((event) => { // TODO: 似乎不会有更多事件需要监听
-            selectProvinceElement.addEventListener(event, handleProvinceSelect.bind(this));
-            selectCityElement.addEventListener(event, handleCitySelect.bind(this));
-        });
-
-        this.setting = new Setting({
-            confirmCallback: () => {
-                this.saveData(STORAGE_SETTINGS, { province: selectProvinceElement.value });
-                this.saveData(STORAGE_SETTINGS, { city: selectCityElement.value });
-            }
-        });
-
-        this.setting.addItem({
-            title: "位置",
-            createActionElement: () => {
-                const locationDiv = document.createElement("div");
-                locationDiv.setAttribute("id", "weather-location");
-                locationDiv.style.flex = "flex";
-                locationDiv.style.flexDirection = "row";
-                locationDiv.appendChild(selectProvinceElement);
-                locationDiv.appendChild(selectCityElement);
-                return locationDiv;
-            },
-        });
-
-        const setProvinceElements = (cities: readonlyWeatherCachedCity) => {
-            dbg(cities);
-            for (const [key, value] of Object.entries(cities)) {
-                const optionElement = document.createElement("option");
-                optionElement.value = key;
-                optionElement.text = value.province;
-                selectProvinceElement.appendChild(optionElement);
-            }
-            selectProvinceElement.dispatchEvent(new Event("change"));
-        };
-        // 获取所有省份名字，保存到缓存中，城市名字先为空，等到用户选择了省份之后再获取，到时同样保存到缓存中
-        this.loadData(CACHED_CITYS).then(async (cityData: WeatherCachedCity) => {
-            const cities = cityData;
-            // 如果没有缓存，发起请求获取省份信息
-            if (!cities) {
-                dbg("Ask weather.cma.cn for province names");
-                try {
-                    await axios.get(WEATHER_SITE_API + "dict/province", { responseType: "json" }).then((response) => {
-                        const ret = response.data;
-                        if (ret["msg"] !== "success") {
-                            throw Error("获取省份信息失败");
-                        }
-                        const provinces: string[] = ret["data"].split("|");
-                        const provinceMap_: WeatherCachedCity = {};
-                        for (let i = 0; i < provinces.length; i++) {
-                            const province_ = provinces[i].split(",");
-                            provinceMap_[province_[0]] = { province: province_[1], cities: [] as string[] };
-                        }
-                        this.saveData(CACHED_CITYS, provinceMap_);
-                        setProvinceElements(provinceMap_);
-                    });
-                } catch (error) {
-                    console.error(error);
-                }
-            } else {
-                // 缓存存在直接使用
-                setProvinceElements(cityData);
-            }
-
-        });
     }
 
     onLayoutReady() {
