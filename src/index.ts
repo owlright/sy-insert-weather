@@ -21,21 +21,22 @@ import "./index.scss";
 
 
 interface WeatherCachedCity {
-    [key: string]: {province:string, cities:string[]};
+    [key: string]: { province: string, cities: string[] };
 }
 type readonlyWeatherCachedCity = Readonly<WeatherCachedCity>;
 
 const WEATHER_SITE_API = "https://weather.cma.cn/api/";
 const CACHED_CITYS = "cities";
 const STORAGE_SETTINGS = "weather_settings";
+const DOCK_TYPE = "dock_tab";
 
-const dbg = (message:any) => {
+const dbg = (message: any) => {
     if (isDevelopment) {
         console.log(message);
     }
 };
 
-const assert = (condition:boolean|object, message:string) => {
+const assert = (condition: boolean | object, message: string) => {
     if (!condition) {
         throw new Error(message);
     }
@@ -160,7 +161,7 @@ export default class InsertWeatherPlugin extends Plugin {
 
         function handleProvinceSelect(event: Event) {
             const selectedOpt = (event.target as HTMLSelectElement).value;
-            this.saveData(STORAGE_SETTINGS, {province: selectedOpt});
+            this.saveData(STORAGE_SETTINGS, { province: selectedOpt });
             console.log(selectedOpt);
             try {
                 axios.get(WEATHER_SITE_API + "dict/province/" + selectedOpt, { responseType: "json" }).then((response) => {
@@ -187,7 +188,7 @@ export default class InsertWeatherPlugin extends Plugin {
         function handleCitySelect(event: Event) {
             const selectedOpt = (event.target as HTMLSelectElement).value;
             console.log(selectedOpt);
-            this.saveData(STORAGE_SETTINGS, {city: selectedOpt});
+            this.saveData(STORAGE_SETTINGS, { city: selectedOpt });
         }
 
         const selectProvinceElement: HTMLSelectElement = document.createElement("select");
@@ -205,8 +206,8 @@ export default class InsertWeatherPlugin extends Plugin {
 
         this.setting = new Setting({
             confirmCallback: () => {
-                this.saveData(STORAGE_SETTINGS, {province: selectProvinceElement.value});
-                this.saveData(STORAGE_SETTINGS, {city: selectCityElement.value});
+                this.saveData(STORAGE_SETTINGS, { province: selectProvinceElement.value });
+                this.saveData(STORAGE_SETTINGS, { city: selectCityElement.value });
             }
         });
 
@@ -234,7 +235,7 @@ export default class InsertWeatherPlugin extends Plugin {
             selectProvinceElement.dispatchEvent(new Event("change"));
         };
         // 获取所有省份名字，保存到缓存中，城市名字先为空，等到用户选择了省份之后再获取，到时同样保存到缓存中
-        this.loadData(CACHED_CITYS).then(async (cityData : WeatherCachedCity) =>  {
+        this.loadData(CACHED_CITYS).then(async (cityData: WeatherCachedCity) => {
             const cities = cityData;
             // 如果没有缓存，发起请求获取省份信息
             if (!cities) {
@@ -249,7 +250,7 @@ export default class InsertWeatherPlugin extends Plugin {
                         const provinceMap_: WeatherCachedCity = {};
                         for (let i = 0; i < provinces.length; i++) {
                             const province_ = provinces[i].split(",");
-                            provinceMap_[province_[0]] = {province: province_[1], cities: [] as string[]};
+                            provinceMap_[province_[0]] = { province: province_[1], cities: [] as string[] };
                         }
                         this.saveData(CACHED_CITYS, provinceMap_);
                         setProvinceElements(provinceMap_);
