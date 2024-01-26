@@ -24,6 +24,8 @@ let I18n = null;
 export default class InsertWeatherPlugin extends Plugin {
 
     private isMobile: boolean;
+    updateBindThis = this.update.bind(this);
+    rightMenuItems: { [key: string]: { filter: string[], name: string, template: string } } = {};
 
     parseWeatherHtml(weatherHtml: string): string {
         const weekDayIndex = 0;
@@ -52,6 +54,14 @@ export default class InsertWeatherPlugin extends Plugin {
 
         I18n = this.i18n;
         const frontEnd = getFrontend();
+        this.rightMenuItems = {
+            weather: {
+                filter: ['tq', "today's weather"],
+                name: this.i18n.weather,
+                template: ''
+            }
+        };
+
         this.isMobile = frontEnd === "mobile" || frontEnd === "browser-mobile";
         // 图标的制作参见帮助文档
         this.addIcons(`<symbol id="iconWeather" viewBox="0 0 1024 1024">
@@ -78,6 +88,8 @@ export default class InsertWeatherPlugin extends Plugin {
         //         }
         //     }
         // });
+
+        this.updateSlash();
         this.addDock({
             config: {
                 position: "RightTop",
@@ -131,14 +143,43 @@ export default class InsertWeatherPlugin extends Plugin {
         const setting = new WeatherSetting(this, {});
         this.setting = setting;
         setting.setUpElements();
+        window.addEventListener('keypress', this.updateBindThis);
 
     }
 
+    updateSlash() {
+        this.protyleSlash = Object.values(this.rightMenuItems).map((template) => {
+            return {
+                filter: template.filter,
+                html: `<span>${template.name} ${template.template}</span>`,
+                id: template.name,
+                callback: (protyle: Protyle) => {
+                    let strnow = template.template;
+                    console.log(template.name, strnow);
+                    protyle.insert(strnow, false);
+                },
+                //@ts-ignore
+                update() {
+                    this.html = `<span>${template.name} ${template.template}</span>`;
+                }
+            }
+        });
+    }
+    update(e: any) {
+        if (e.key === '/') {
+            this.protyleSlash.forEach((slash) => {
+                dbg(slash);
+                //@ts-ignore
+                slash.update();
+            })
+        }
+    }
     onLayoutReady() {
         // dbg(`frontend: ${getFrontend()}; backend: ${getBackend()}`);
     }
 
     onunload() {
+        window.removeEventListener('keypress', this.updateBindThis);
         if (isDevelopment) { // 方便调试
             // ? 省市不会经常变动吧，不需要清除缓存
             this.removeData(CACHED_CITYS);
