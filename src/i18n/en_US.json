@@ -1,5 +1,7 @@
 {
-  "addTopBarIcon": "Seven-day weather forecast",
+  "weatherReport": "Seven-day weather forecast",
+  "notImplemented": "Not yet implemented.",
+  "weather" : "Weather",
   "cancel": "Cancel",
   "save": "Save",
   "byeMenu": "Bye, Menu!",
