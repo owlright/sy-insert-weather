@@ -114,11 +114,11 @@ export default class WeatherSettings extends Setting {
     }
 
     private setProvinceElements = (cities: readonlyWeatherCachedCity) => {
-        dbg(cities);
+        this.selectProvinceElement.innerHTML = ""; // clear recent information
         for (const [key, value] of Object.entries(cities)) {
             const optionElement = document.createElement("option");
-            optionElement.value = key;
-            optionElement.text = value.province;
+            optionElement.value = key; // something like "ABJ"
+            optionElement.text = value.province; // something like "北京"
             this.selectProvinceElement.appendChild(optionElement);
         }
         this.selectProvinceElement.dispatchEvent(new Event("change"));
