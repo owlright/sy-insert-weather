@@ -16,8 +16,16 @@ export default class WeatherSettings extends Setting {
             height: options.height,
             width: options.width,
             confirmCallback: () => {
-                plugin.saveData(STORAGE_SETTINGS, { province: this.selectProvinceElement.value });
-                plugin.saveData(STORAGE_SETTINGS, { city: this.selectCityElement.value });
+                try {
+                    assert(this.selectProvinceElement.value !== "", "省份不能为空");
+                    assert(this.selectCityElement.value !== "", "城市不能为空");
+                    const city = this.selectCityElement.value + ',' + this.selectCityElement.selectedOptions[0].textContent;
+                    assert(this.plugin.storageCities[this.selectProvinceElement.value].cities.includes(city), "不可能发生：省份和城市不匹配");
+                    plugin.storageSettings = { province: this.selectProvinceElement.value, city: this.selectCityElement.value };
+                } catch (e) {
+                    dbg(e.message);
+                    plugin.storageSettings = { province: null, city: null};
+                }
             },
             destroyCallback: options.destroyCallback,
         });
@@ -33,7 +41,6 @@ export default class WeatherSettings extends Setting {
     public setUpElements(): void {
         const handleProvinceSelect = (event: Event) => {
             const selectedOpt = (event.target as HTMLSelectElement).value;
-            this.plugin.saveData(STORAGE_SETTINGS, { province: selectedOpt });
             console.log(selectedOpt);
             try {
                 axios.get(WEATHER_SITE_API + "dict/province/" + selectedOpt, { responseType: "json" }).then((response) => {
@@ -60,7 +67,6 @@ export default class WeatherSettings extends Setting {
         const handleCitySelect = (event: Event) => {
             const selectedOpt = (event.target as HTMLSelectElement).value;
             console.log(selectedOpt);
-            this.plugin.saveData(STORAGE_SETTINGS, { city: selectedOpt });
         };
         this.selectProvinceElement.addEventListener("change", handleProvinceSelect);
         this.selectCityElement.addEventListener("change", handleCitySelect);
@@ -77,32 +83,7 @@ export default class WeatherSettings extends Setting {
             },
         });
         // 获取所有省份名字，保存到缓存中，城市名字先为空，等到用户选择了省份之后再获取，到时同样保存到缓存中
-        this.plugin.loadData(CACHED_CITYS).then(async (cityData: WeatherCachedCity) => {
-            const cities = cityData;
-            // 如果没有缓存，发起请求获取省份信息
-            if (!cities) {
-                dbg("Ask weather.cma.cn for province names");
-                try {
-                    await axios.get(WEATHER_SITE_API + "dict/province", { responseType: "json" }).then((response) => {
-                        const ret = response.data;
-                        if (ret["msg"] !== "success") {
-                            throw Error("获取省份信息失败");
-                        }
-                        const provinces: string[] = ret["data"].split("|");
-                        const provinceMap_: WeatherCachedCity = {};
-                        for (let i = 0; i < provinces.length; i++) {
-                            const province_ = provinces[i].split(",");
-                            provinceMap_[province_[0]] = { province: province_[1], cities: [] as string[] };
-                        }
-                        this.plugin.saveData(CACHED_CITYS, provinceMap_);
-                        this.setProvinceElements(provinceMap_);
-                    });
-                } catch (error) {
-                    console.error(error);
-                }
-            } else {
-                // 缓存存在直接使用
-                this.setProvinceElements(cities);
+        if (!this.plugin.storageCities) { // 如果没有缓存，发起请求获取省份信息
             }
         });
     }
