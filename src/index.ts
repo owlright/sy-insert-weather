@@ -17,7 +17,15 @@ import axios from "axios";
 import * as cheerio from "cheerio";
 
 import "./index.scss";
-import {WEATHER_SITE_API, CACHED_CITYS, STORAGE_SETTINGS, DOCK_TYPE, assert, dbg, isDevelopment, WeatherCachedCity, readonlyWeatherCachedCity} from "./types";
+import {
+    CACHED_CITYS,
+    STORAGE_SETTINGS,
+    DOCK_TYPE,
+    dbg,
+    isDevelopment,
+    WeatherCachedCity,
+    StrogeSettings,
+} from "./types";
 import WeatherSetting from "./WeatherSetting";
 let I18n = null;
 
@@ -26,6 +34,8 @@ export default class InsertWeatherPlugin extends Plugin {
     private isMobile: boolean;
     updateBindThis = this.update.bind(this);
     rightMenuItems: { [key: string]: { filter: string[], name: string, template: string } } = {};
+    storageSettings: StrogeSettings = null;
+    storageCities: WeatherCachedCity = null;
 
     parseWeatherHtml(weatherHtml: string): string {
         const weekDayIndex = 0;
@@ -49,8 +59,7 @@ export default class InsertWeatherPlugin extends Plugin {
         return storeStr.join("\n");
     }
 
-    onload() {
-        this.data[CACHED_CITYS] = null as WeatherCachedCity;
+    async onload() {
 
         I18n = this.i18n;
         const frontEnd = getFrontend();
@@ -88,6 +97,16 @@ export default class InsertWeatherPlugin extends Plugin {
         //         }
         //     }
         // });
+        await Promise.all([
+            this.loadData(STORAGE_SETTINGS).then((settings: StrogeSettings) => {
+                dbg(`load settings: ${settings}`);
+                this.storageSettings = settings;
+
+            }), this.loadData(CACHED_CITYS).then((cities: WeatherCachedCity) => {
+                dbg(`load stroage cities: ${cities}`);
+                this.storageCities = cities;
+            }),
+        ]);
 
         this.updateSlash();
         this.addDock({
@@ -186,6 +205,7 @@ export default class InsertWeatherPlugin extends Plugin {
         }
 
         console.log(this.i18n.byePlugin);
+        this.saveData(STORAGE_SETTINGS, this.storageSettings);
     }
 
     // private async showDialog() {

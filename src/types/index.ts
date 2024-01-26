@@ -9,6 +9,10 @@ export interface WeatherCachedCity {
 }
 export type readonlyWeatherCachedCity = Readonly<WeatherCachedCity>;
 
+export interface StrogeSettings {
+    [key: string]: string;
+}
+export type readonlyStrogeSettings = Readonly<StrogeSettings>;
 
 export const dbg = (message: any) => {
     if (isDevelopment) {
