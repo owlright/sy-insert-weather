@@ -1,5 +1,8 @@
 {
-  "addTopBarIcon": "Add a top bar icon by plugin",
+  "weatherReport": "Seven-day weather forecast",
+  "notImplemented": "Not yet implemented",
+  "settingNotReady": "Setting is not ready",
+  "weather" : "Weather",
   "cancel": "Cancel",
   "save": "Save",
   "byeMenu": "Bye, Menu!",

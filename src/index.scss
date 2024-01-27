@@ -1,4 +1,4 @@
-.plugin-sample {
+.plugin-insert-weather {
   &__custom-tab {
     background-color: var(--b3-theme-background);
     height: 100%;
@@ -8,7 +8,7 @@
     align-items: center;
   }
 
-  &__custom-dock {
+  &__dock {
     display: flex;
     justify-content: center;
     align-items: center;
