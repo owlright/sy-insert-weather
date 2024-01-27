@@ -1,7 +1,7 @@
-import { WeatherCachedCity, dbg, readonlyWeatherCachedCity, assert } from "./types";
+import { dbg, assert } from "./types";
 import { Setting } from "siyuan";
 import InsertWeatherPlugin from "./index";
-import { getCities, getProvinces } from "./api";
+
 export default class WeatherSettings extends Setting {
     selectProvinceElement: HTMLSelectElement;
     selectCityElement: HTMLSelectElement;
@@ -17,14 +17,15 @@ export default class WeatherSettings extends Setting {
             width: options.width,
             confirmCallback: () => {
                 try {
-                    assert(this.selectProvinceElement.value !== "", "省份不能为空");
-                    assert(this.selectCityElement.value !== "", "城市不能为空");
-                    const city = this.selectCityElement.value + ',' + this.selectCityElement.selectedOptions[0].textContent;
-                    assert(this.plugin.storageCities[this.selectProvinceElement.value].cities.includes(city), "不可能发生：省份和城市不匹配");
-                    plugin.storageSettings = { province: this.selectProvinceElement.value, city: this.selectCityElement.value };
+                    const cityCode =this.selectCityElement.value;
+                    const pCode = this.selectProvinceElement.value;
+                    assert(pCode !== "", "省份不能为空");
+                    assert(cityCode !== "", "城市不能为空");
+                    console.log(`保存 ${this.plugin.provinceCode[pCode]}, 城市：${this.plugin.cityCode[cityCode]}`);
+                    plugin.storageSetting = { provinceCode: this.selectProvinceElement.value, cityCode: this.selectCityElement.value };
                 } catch (e) {
                     dbg(e.message);
-                    plugin.storageSettings = { province: null, city: null};
+                    plugin.storageSetting = { provinceCode: null, cityCode: null};
                 }
             },
             destroyCallback: options.destroyCallback,
@@ -39,25 +40,21 @@ export default class WeatherSettings extends Setting {
         this.selectCityElement.setAttribute("id", "weather-city-select");
     }
     public setUpElements(): void {
+
         const handleProvinceSelect = (event: Event) => {
-            const selectedOpt = (event.target as HTMLSelectElement).value;
-            console.log(selectedOpt);
-            if (this.plugin.storageCities[selectedOpt].cities.length !== 0) {
-                this.setCitiesElements(this.plugin.storageCities[selectedOpt].cities);
-            } else {
-                getCities(selectedOpt).then((data) => {
-                    const cities: string[] = data.split("|");
-                    this.plugin.storageCities[selectedOpt]['cities'] = cities;
-                    this.setCitiesElements(cities);
-                }).catch((e) => {
-                    console.error(e);
-                });
-            }
+            const plugin = this.plugin;
+            const pCode = (event.target as HTMLSelectElement).value;
+            const pName = plugin.provinceCode[pCode];
+            const province = pCode + ',' + pName;
+            console.log(`${province}`);
+            this.addOptionElements(plugin.cachedOriginalData[province], this.selectCityElement);
         };
+
         const handleCitySelect = (event: Event) => {
             const selectedOpt = (event.target as HTMLSelectElement).value;
-            console.log(selectedOpt);
+            console.log(`${selectedOpt}, ${plugin.cityCode[selectedOpt]}`);
         };
+
         this.selectProvinceElement.addEventListener("change", handleProvinceSelect);
         this.selectCityElement.addEventListener("change", handleCitySelect);
         this.addItem({
@@ -72,60 +69,37 @@ export default class WeatherSettings extends Setting {
                 return locationDiv;
             },
         });
-        // 获取所有省份名字，保存到缓存中，城市名字先为空，等到用户选择了省份之后再获取，到时同样保存到缓存中
-            dbg("Province names are not found! So get them now");
-            getProvinces()
-                .then((data) => {
-                    const provinces: string[] = data.split("|");
-                    const provinceMap_: WeatherCachedCity = {};
-                    for (let i = 0; i < provinces.length; i++) {
-                        const province_ = provinces[i].split(",");
-                        provinceMap_[province_[0]] = { province: province_[1], cities: [] as string[] };
-                    }
-                    this.plugin.storageCities = provinceMap_;
-                    this.setProvinceElements(provinceMap_);
-                    if (this.plugin.storageSettings) {
-                        this.selectProvinceElement.value = this.plugin.storageSettings.province;
-                        this.selectProvinceElement.dispatchEvent(new Event("change"));
-                        this.selectCityElement.value = this.plugin.storageSettings.city;
-                    }
-                })
-                .catch(e => {
-                    console.error(e);
-                });
-        } else { // 缓存存在直接使用
-            this.setProvinceElements(this.plugin.storageCities);
-            if (this.plugin.storageSettings) {
-                this.selectProvinceElement.value = this.plugin.storageSettings.province;
-                this.selectProvinceElement.dispatchEvent(new Event("change"));
-                this.selectCityElement.value = this.plugin.storageSettings.city;
-            }
+        const plugin = this.plugin;
+
+        this.addOptionElements(Object.keys(plugin.cachedOriginalData), this.selectProvinceElement);
+        if (!plugin.storageSetting) {
+            this.selectProvinceElement.options[0].selected = true;
+            this.selectProvinceElement.dispatchEvent(new Event("change"));
+        } else {
+            const diseredProvince = plugin.storageSetting.provinceCode;
+            const foundOption = Array.from(this.selectProvinceElement.options).find(option => option.value === diseredProvince);
+            assert(foundOption, "不可能发生：存储的省份不存在");
+            foundOption.selected = true;
+            const province = diseredProvince + ',' + plugin.provinceCode[diseredProvince];
+            this.addOptionElements(plugin.cachedOriginalData[province], this.selectCityElement);
+            const diseredCity = plugin.storageSetting.cityCode;
+            const foundOption2 = Array.from(this.selectCityElement.options).find(option => option.value === diseredCity);
+            assert(foundOption, "不可能发生：找不到对应的城市");
+            foundOption2.selected = true;
         }
+
     }
 
-    private setProvinceElements = (cities: readonlyWeatherCachedCity) => {
-        this.selectProvinceElement.innerHTML = ""; // clear recent information
-        for (const [key, value] of Object.entries(cities)) {
+    private addOptionElements = (options: Readonly<string[]>, selectElement: HTMLSelectElement) => {
+        selectElement.innerHTML = ""; // clear old information
+        for (let i = 0; i < options.length; i++) {
             const optionElement = document.createElement("option");
-            optionElement.value = key; // something like "ABJ"
-            optionElement.text = value.province; // something like "北京"
-            this.selectProvinceElement.appendChild(optionElement);
-        }
-        this.selectProvinceElement.dispatchEvent(new Event("change"));
-    };
-
-    private setCitiesElements = (cities: string[]) => {
-        this.selectCityElement.innerHTML = ""; // clear recent information
-        for (let i = 0; i < cities.length; i++) {
-            const optionElement = document.createElement("option");
-            const s = cities[i].split(",");
+            const s = options[i].split(",");
             optionElement.value = s[0];
             optionElement.text = s[1];
-            this.selectCityElement.appendChild(optionElement);
+            selectElement.appendChild(optionElement);
         }
-        this.selectCityElement.dispatchEvent(new Event("change")); // call selectElement's change event
     }
-
 }
 
 
