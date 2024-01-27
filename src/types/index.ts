@@ -17,7 +17,11 @@ export type readonlyStrogeSettings = Readonly<StoragedSetting>;
 
 export const dbg = (message: any) => {
     if (isDevelopment) {
-        console.log(message);
+        if (typeof message === "object") {
+            console.log(`调试信息: ${JSON.stringify(message)}`);
+        } else {
+            console.log(`调试信息: ${message}`);
+        }
     }
 };
 

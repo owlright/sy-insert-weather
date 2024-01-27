@@ -21,7 +21,7 @@ export default class WeatherSettings extends Setting {
                     const pCode = this.selectProvinceElement.value;
                     assert(pCode !== "", "省份不能为空");
                     assert(cityCode !== "", "城市不能为空");
-                    console.log(`保存 ${this.plugin.provinceCode[pCode]}, 城市：${this.plugin.cityCode[cityCode]}`);
+                    dbg(`保存 ${this.plugin.provinceCode[pCode]}, ${this.plugin.cityCode[cityCode]}`);
                     plugin.storageSetting = { provinceCode: this.selectProvinceElement.value, cityCode: this.selectCityElement.value };
                 } catch (e) {
                     dbg(e.message);
@@ -46,13 +46,13 @@ export default class WeatherSettings extends Setting {
             const pCode = (event.target as HTMLSelectElement).value;
             const pName = plugin.provinceCode[pCode];
             const province = pCode + ',' + pName;
-            console.log(`${province}`);
+            dbg(`当前选中省份: ${province}`);
             this.addOptionElements(plugin.cachedOriginalData[province], this.selectCityElement);
         };
 
         const handleCitySelect = (event: Event) => {
             const selectedOpt = (event.target as HTMLSelectElement).value;
-            console.log(`${selectedOpt}, ${plugin.cityCode[selectedOpt]}`);
+            dbg(`当前选中城市: ${plugin.cityCode[selectedOpt]}`);
         };
 
         this.selectProvinceElement.addEventListener("change", handleProvinceSelect);

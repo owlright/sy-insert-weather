@@ -98,7 +98,7 @@ export default class InsertWeatherPlugin extends Plugin {
         assert(this.provinceCity, "provinceCity is not initialized");
         assert(this.cityCode, "cityCode is not initialized");
         assert(this.cachedOriginalData, "cachedOriginalData is not initialized");
-        console.log(this.cachedOriginalData);
+        dbg(this.cachedOriginalData);
 
         Object.entries(this.cachedOriginalData).forEach(([code_province, code_cities]) => {
             const province_ = code_province.split(",");
@@ -126,10 +126,10 @@ export default class InsertWeatherPlugin extends Plugin {
             },
             type: DOCK_TYPE,
             resize() {
-                console.log(DOCK_TYPE + " resize");
+                dbg(DOCK_TYPE + " resize");
             },
             update() {
-                console.log(DOCK_TYPE + " update");
+                dbg(DOCK_TYPE + " update");
             },
             init: (dock) => {
                 if (this.isMobile) {
@@ -160,7 +160,7 @@ export default class InsertWeatherPlugin extends Plugin {
                 }
             },
             destroy() {
-                console.log("destroy dock:", DOCK_TYPE);
+                dbg(`destroy dock:  ${DOCK_TYPE}`);
             },
         });
         const setting = new WeatherSetting(this, {});
@@ -178,7 +178,6 @@ export default class InsertWeatherPlugin extends Plugin {
                 id: template.name,
                 callback: (protyle: Protyle) => {
                     let strnow = template.content;
-                    console.log(template.name, strnow);
                     protyle.insert(strnow, false);
                 },
                 //@ts-ignore
@@ -207,7 +206,7 @@ export default class InsertWeatherPlugin extends Plugin {
             // ? 省市不会经常变动吧，不需要清除缓存
             // this.removeData(CACHED_CITYS);
         }
-        console.log(this.i18n.byePlugin);
+        dbg(this.i18n.byePlugin);
         this.saveData(CACHED_CITYS, this.cachedOriginalData);
         this.saveData(STORAGE_SETTINGS, this.storageSetting);
     }
