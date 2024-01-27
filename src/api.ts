@@ -25,8 +25,8 @@ const parseWeatherHtml = (weatherHtml: string): string => {
     return storeStr.join("\n");
 }
 
-export const getCities = async (province: string): Promise<string> => {
-    const response = await axios.get(WEATHER_SITE_API + "dict/province/" + province);
+export const getCities = async (pCode: string): Promise<string> => {
+    const response = await axios.get(WEATHER_SITE_API + "dict/province/" + pCode);
     const ret = response.data;
     if (ret["msg"] !== "success") {
         throw Error("获取城市信息失败");
@@ -34,6 +34,7 @@ export const getCities = async (province: string): Promise<string> => {
         return ret["data"];
     }
 }
+
 export const getProvinces = async (): Promise<string> => {
     const response = await axios.get(WEATHER_SITE_API + "dict/province/");
     const ret = response.data;
@@ -43,6 +44,7 @@ export const getProvinces = async (): Promise<string> => {
         return ret["data"];
     }
 }
+
 const get7daysWeather = async (city: string): Promise<Object[]> => {
     return axios.get(WEATHER_SITE_API + "weather/" + city).then((response) => {
         return response.data.data["daily"];
@@ -50,10 +52,11 @@ const get7daysWeather = async (city: string): Promise<Object[]> => {
 }
 
 export const getTodayWeather = async (city: string): Promise<string> => {
-    const sevenDays: Object[] = await get7daysWeather(city);
+    const sevenDays = await get7daysWeather(city);
     if (sevenDays.length === 0) {
         throw Error("获取天气信息失败");
     }
+    //@ts-ignore
     return sevenDays[0].dayText;
 }
 

@@ -4,15 +4,16 @@ export const CACHED_CITYS = "cities";
 export const STORAGE_SETTINGS = "weather_settings";
 export const DOCK_TYPE = "dock_tab";
 
-export interface WeatherCachedCity {
-    [key: string]: { province: string, cities: string[] };
+export interface StoragedCache {
+    [key: string]: string[];
 }
-export type readonlyWeatherCachedCity = Readonly<WeatherCachedCity>;
 
-export interface StrogeSettings {
-    [key: string]: string;
+export interface StoragedSetting {
+    "provinceCode": string;
+    "cityCode": string;
 }
-export type readonlyStrogeSettings = Readonly<StrogeSettings>;
+
+export type readonlyStrogeSettings = Readonly<StoragedSetting>;
 
 export const dbg = (message: any) => {
     if (isDevelopment) {
