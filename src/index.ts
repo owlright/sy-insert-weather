@@ -46,8 +46,8 @@ export default class InsertWeatherPlugin extends Plugin {
         I18n = this.i18n;
         const frontEnd = getFrontend();
         this.rightMenuItems = {
-            weather: {
-                filter: ['tq', "today's weather"],
+            day: {
+                filter: ['tq', "weather"],
                 name: I18n.weather,
                 content: I18n.settingNotReady,
             }
