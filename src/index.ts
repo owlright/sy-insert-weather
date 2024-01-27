@@ -113,56 +113,56 @@ export default class InsertWeatherPlugin extends Plugin {
         });
 
         this.updateSlash();
-        this.addDock({
-            config: {
-                position: "RightTop",
-                size: { width: 200, height: 0 },
-                icon: "iconWeather",
-                title: this.i18n.weatherReport,
-                hotkey: "",
-            },
-            data: {
-                text: this.i18n.notImplemented,
-            },
-            type: DOCK_TYPE,
-            resize() {
-                dbg(DOCK_TYPE + " resize");
-            },
-            update() {
-                dbg(DOCK_TYPE + " update");
-            },
-            init: (dock) => {
-                if (this.isMobile) {
-                    dock.element.innerHTML = `
-                        <div class="toolbar toolbar--border toolbar--dark">
-                            <svg class="toolbar__icon"><use xlink:href="#iconEmoji"></use></svg>
-                            <div class="toolbar__text">Custom Dock</div>
-                        </div>
-                        <div class="fn__flex-1 plugin-insert-weather__dock">${dock.data.text}</div>
-                    </div>`;
-                } else {
-                    dock.element.innerHTML = `
-                        <div class="fn__flex-1 fn__flex-column">
-                            <div class="block__icons">
-                                <div class="block__logo">
-                                <!--  <svg class="block__logoicon"><use xlink:href="#iconEmoji"></use></svg>-->
-                                    ${this.i18n.weatherReport}
-                                </div>
-                                <span class="fn__flex-1 fn__space"></span>
-                                <span data-type="min" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Min ${adaptHotkey("")}">
-                                    <svg><use xlink:href="#iconMin"></use></svg>
-                                </span>
-                            </div>
-                            <div class="fn__flex-1 plugin-insert-weather__dock">
-                                ${dock.data.text}
-                            </div>
-                        </div>`;
-                }
-            },
-            destroy() {
-                dbg(`destroy dock:  ${DOCK_TYPE}`);
-            },
-        });
+        // this.addDock({
+        //     config: {
+        //         position: "RightTop",
+        //         size: { width: 200, height: 0 },
+        //         icon: "iconWeather",
+        //         title: this.i18n.weatherReport,
+        //         hotkey: "",
+        //     },
+        //     data: {
+        //         text: this.i18n.notImplemented,
+        //     },
+        //     type: DOCK_TYPE,
+        //     resize() {
+        //         dbg(DOCK_TYPE + " resize");
+        //     },
+        //     update() {
+        //         dbg(DOCK_TYPE + " update");
+        //     },
+        //     init: (dock) => {
+        //         if (this.isMobile) {
+        //             dock.element.innerHTML = `
+        //                 <div class="toolbar toolbar--border toolbar--dark">
+        //                     <svg class="toolbar__icon"><use xlink:href="#iconEmoji"></use></svg>
+        //                     <div class="toolbar__text">Custom Dock</div>
+        //                 </div>
+        //                 <div class="fn__flex-1 plugin-insert-weather__dock">${dock.data.text}</div>
+        //             </div>`;
+        //         } else {
+        //             dock.element.innerHTML = `
+        //                 <div class="fn__flex-1 fn__flex-column">
+        //                     <div class="block__icons">
+        //                         <div class="block__logo">
+        //                         <!--  <svg class="block__logoicon"><use xlink:href="#iconEmoji"></use></svg>-->
+        //                             ${this.i18n.weatherReport}
+        //                         </div>
+        //                         <span class="fn__flex-1 fn__space"></span>
+        //                         <span data-type="min" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Min ${adaptHotkey("")}">
+        //                             <svg><use xlink:href="#iconMin"></use></svg>
+        //                         </span>
+        //                     </div>
+        //                     <div class="fn__flex-1 plugin-insert-weather__dock">
+        //                         ${dock.data.text}
+        //                     </div>
+        //                 </div>`;
+        //         }
+        //     },
+        //     destroy() {
+        //         dbg(`destroy dock:  ${DOCK_TYPE}`);
+        //     },
+        // });
         const setting = new WeatherSetting(this, {});
         this.setting = setting;
         setting.setUpElements();
