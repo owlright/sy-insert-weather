@@ -1,6 +1,7 @@
 {
   "weatherReport": "未来七日天气",
   "notImplemented": "尚未实现",
+  "settingNotReady": "未设置城市",
   "weather" : "天气",
   "cancel": "取消",
   "save": "保存",

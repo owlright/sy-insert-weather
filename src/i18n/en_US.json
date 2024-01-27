@@ -1,6 +1,7 @@
 {
   "weatherReport": "Seven-day weather forecast",
-  "notImplemented": "Not yet implemented.",
+  "notImplemented": "Not yet implemented",
+  "settingNotReady": "Setting is not ready",
   "weather" : "Weather",
   "cancel": "Cancel",
   "save": "Save",

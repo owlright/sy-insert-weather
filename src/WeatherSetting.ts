@@ -1,7 +1,7 @@
-import axios from "axios";
-import { WEATHER_SITE_API, WeatherCachedCity, dbg, readonlyWeatherCachedCity, assert } from "./types";
+import { WeatherCachedCity, dbg, readonlyWeatherCachedCity, assert } from "./types";
 import { Setting } from "siyuan";
 import InsertWeatherPlugin from "./index";
+import { getCities, getProvinces } from "./api";
 export default class WeatherSettings extends Setting {
     selectProvinceElement: HTMLSelectElement;
     selectCityElement: HTMLSelectElement;
@@ -45,14 +45,9 @@ export default class WeatherSettings extends Setting {
             if (this.plugin.storageCities[selectedOpt].cities.length !== 0) {
                 this.setCitiesElements(this.plugin.storageCities[selectedOpt].cities);
             } else {
-                axios.get(WEATHER_SITE_API + "dict/province/" + selectedOpt, { responseType: "json" }).then((response) => {
-                    const ret = response.data;
-                    if (ret["msg"] !== "success") {
-                        throw Error("获取城市信息失败");
-                    }
-                    // console.log("citys: " + ret["data"]);
-                    const cities: string[] = ret["data"].split("|");
-                    this.plugin.storageCities[selectedOpt]['cities']= cities;
+                getCities(selectedOpt).then((data) => {
+                    const cities: string[] = data.split("|");
+                    this.plugin.storageCities[selectedOpt]['cities'] = cities;
                     this.setCitiesElements(cities);
                 }).catch((e) => {
                     console.error(e);
@@ -78,15 +73,10 @@ export default class WeatherSettings extends Setting {
             },
         });
         // 获取所有省份名字，保存到缓存中，城市名字先为空，等到用户选择了省份之后再获取，到时同样保存到缓存中
-        if (!this.plugin.storageCities) { // 如果没有缓存，发起请求获取省份信息
-            dbg("Ask weather.cma.cn for province names");
-            axios.get(WEATHER_SITE_API + "dict/province", { responseType: "json" })
-                .then((response) => {
-                    const ret = response.data;
-                    if (ret["msg"] !== "success") {
-                        throw Error("获取省份信息失败");
-                    }
-                    const provinces: string[] = ret["data"].split("|");
+            dbg("Province names are not found! So get them now");
+            getProvinces()
+                .then((data) => {
+                    const provinces: string[] = data.split("|");
                     const provinceMap_: WeatherCachedCity = {};
                     for (let i = 0; i < provinces.length; i++) {
                         const province_ = provinces[i].split(",");
