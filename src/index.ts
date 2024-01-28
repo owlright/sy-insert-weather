@@ -33,7 +33,7 @@ export default class InsertWeatherPlugin extends Plugin {
 
     private isMobile: boolean;
     updateBindThis = this.update.bind(this);
-    rightMenuItems: { [key: string]: { filter: string[], name: string, content: string } } = {};
+    rightMenuItems: { day: { filter: string[], name: string, content: string } };
     storageSetting: StoragedSetting = null;
 
     cityCode: { [key: string]: string } = {};
@@ -49,10 +49,9 @@ export default class InsertWeatherPlugin extends Plugin {
             day: {
                 filter: ['tq', "weather"],
                 name: I18n.weather,
-                content: I18n.settingNotReady,
+                content: I18n.settingNotReady
             }
         };
-
         this.isMobile = frontEnd === "mobile" || frontEnd === "browser-mobile";
 
         // 图标的制作参见帮助文档
@@ -74,7 +73,7 @@ export default class InsertWeatherPlugin extends Plugin {
                 const city = this.storageSetting.cityCode;
                 if (city) {
                     getTodayWeather(city).then((weather) => {
-                        this.rightMenuItems.weather.content = weather;
+                        this.rightMenuItems.day.content = weather;
                     });
                 }
             }), this.loadData(CACHED_CITYS).then(async (cities: StoragedCache) => {
