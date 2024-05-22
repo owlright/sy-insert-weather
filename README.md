@@ -8,3 +8,5 @@ Input `/tq`, `/weather`, insert `sunny`
 
 Open the plugin settings and insert your location.
 
+## Acknowledgements
+Many of the code and design ideas in this project were inspired by [@frostime](https://github.com/frostime)'s [sy-insert-time](https://github.com/frostime/sy-insert-time) .
