@@ -8,6 +8,10 @@ const ZipPlugin = require("zip-webpack-plugin");
 
 module.exports = (env, argv) => {
     const isPro = argv.mode === "production";
+    const isDev = argv.mode === "development";
+    if (isPro && isDev) {
+        throw new Error("Cannot be both production and development mode");
+    }
     const plugins = [
         new MiniCssExtractPlugin({
             filename: isPro ? "dist/index.css" : "index.css",
@@ -42,6 +46,76 @@ module.exports = (env, argv) => {
                 return assetPath.replace("dist/", "");
             },
         }));
+    }
+    else if (isDev) {
+        plugins.push(new CopyPlugin({
+            patterns: [
+                { from: "preview.png", to: "./" },
+                { from: "icon.png", to: "./" },
+                { from: "README*.md", to: "./" },
+                { from: "plugin.json", to: "./" },
+                { from: "src/i18n/", to: "./i18n/" },
+            ],
+        }));
+        return {
+            mode: "development",
+            watch: true,
+            devtool: "eval",
+            output: {
+                filename: "[name].js",
+                path: path.resolve(__dirname, 'dev'),
+                libraryTarget: "commonjs2",
+                library: {
+                    type: "commonjs2",
+                },
+            },
+            externals: {
+                siyuan: "siyuan",
+            },
+            entry,
+            optimization: {
+                minimize: false,
+            },
+            resolve: {
+                extensions: [".ts", ".scss", ".js", ".json"],
+                fallback: {
+                    // "https": require.resolve("https-browserify"),
+                    // "url": require.resolve("url/"),
+                    // "http": require.resolve("stream-http"),
+                    // "buffer": require.resolve("buffer/")
+                },
+            },
+            module: {
+                rules: [
+                    {
+                        test: /\.ts(x?)$/,
+                        include: [path.resolve(__dirname, "src")],
+                        use: [
+                            {
+                                loader: "esbuild-loader",
+                                options: {
+                                    target: "es6",
+                                }
+                            },
+                        ],
+                    },
+                    {
+                        test: /\.scss$/,
+                        include: [path.resolve(__dirname, "src")],
+                        use: [
+                            MiniCssExtractPlugin.loader,
+                            {
+                                loader: "css-loader", // translates CSS into CommonJS
+                            },
+                            {
+                                loader: "sass-loader", // compiles Sass to CSS
+                            },
+                        ],
+                    }
+                ],
+            },
+            plugins,
+        }
     } else {
         plugins.push(new CopyPlugin({
             patterns: [
