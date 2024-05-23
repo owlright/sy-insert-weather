@@ -62,6 +62,7 @@ export default class WeatherSettings extends Setting {
             createActionElement: () => {
                 const locationDiv = document.createElement("div");
                 locationDiv.setAttribute("id", "weather-location");
+                locationDiv.style.width = "400px";
                 locationDiv.style.flex = "flex";
                 locationDiv.style.flexDirection = "row";
                 locationDiv.appendChild(this.selectProvinceElement);
