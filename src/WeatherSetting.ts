@@ -32,11 +32,11 @@ export default class WeatherSettings extends Setting {
         });
         this.plugin = plugin;
         this.selectProvinceElement = document.createElement("select");
-        this.selectProvinceElement.className = "b3-select fn__flex-center fn__size200";
+        this.selectProvinceElement.className = "b3-select";
         this.selectProvinceElement.setAttribute("id", "weather-province-select");
 
         this.selectCityElement = document.createElement("select");
-        this.selectCityElement.className = "b3-select fn__flex-center fn__size200";
+        this.selectCityElement.className = "b3-select";
         this.selectCityElement.setAttribute("id", "weather-city-select");
     }
     public setUpElements(): void {
@@ -59,14 +59,22 @@ export default class WeatherSettings extends Setting {
         this.selectCityElement.addEventListener("change", handleCitySelect);
         this.addItem({
             title: "位置",
+            description: "位置1",
             createActionElement: () => {
-                const locationDiv = document.createElement("div");
+                let locationDiv = document.createElement("div");
+                // locationDiv.className =  "b3-label";
                 locationDiv.setAttribute("id", "weather-location");
-                locationDiv.style.width = "400px";
-                locationDiv.style.flex = "flex";
+                locationDiv.style.display = "flex";
                 locationDiv.style.flexDirection = "row";
+                locationDiv.style.justifyContent = "flex-end";
+                locationDiv.style.width = "300px";
+                let button = document.createElement("button");
+                button.className = "b3-button";
+                button.textContent = "默认";
+
                 locationDiv.appendChild(this.selectProvinceElement);
                 locationDiv.appendChild(this.selectCityElement);
+                locationDiv.appendChild(button);
                 return locationDiv;
             },
         });
