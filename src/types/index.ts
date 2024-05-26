@@ -18,9 +18,9 @@ export type readonlyStrogeSettings = Readonly<StoragedSetting>;
 export const dbg = (message: any) => {
     if (isDevelopment) {
         if (typeof message === "object") {
-            console.log(`调试信息: ${JSON.stringify(message)}`);
+            console.log(`sy-insert-weather: ${JSON.stringify(message)}`);
         } else {
-            console.log(`调试信息: ${message}`);
+            console.log(`sy-insert-weather: ${message}`);
         }
     }
 };
