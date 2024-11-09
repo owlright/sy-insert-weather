@@ -5,6 +5,7 @@
   "main": ".src/index.js",
   "scripts": {
     "make-link": "node  --no-warnings ./scripts/make_dev_link.mjs",
+    "make-link-win": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./scripts/elevate.ps1 -scriptPath ./scripts/make_dev_link.mjs",
     "lint": "eslint . --fix --cache",
     "dev": "webpack --mode development",
     "build": "webpack --mode production",
